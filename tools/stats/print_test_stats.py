@@ -106,9 +106,9 @@ def plural(n: int) -> str:
     return '' if n == 1 else 's'
 
 
-def get_base_commit(sha1: str) -> str:
+def get_base_commit(sha1: str, default_branch: str = "origin/master") -> str:
     return subprocess.check_output(
-        ["git", "merge-base", sha1, "origin/master"],
+        ["git", "merge-base", sha1, default_branch],
         encoding="ascii",
     ).strip()
 
@@ -206,7 +206,7 @@ def analyze(
     base_reports: Dict[Commit, List[SimplerReport]],
 ) -> List[SuiteDiff]:
     nonempty_shas = [sha for sha, reports in base_reports.items() if reports]
-    # most recent master ancestor with at least one S3 report,
+    # most recent main ancestor with at least one S3 report,
     # or empty list if there are none (will show all tests as added)
     base_report = base_reports[nonempty_shas[0]] if nonempty_shas else []
 
@@ -391,9 +391,9 @@ def graph(
     other_ancestors: int = 0,
 ) -> str:
     lines = [
-        'Commit graph (base is most recent master ancestor with at least one S3 report):',
+        'Commit graph (base is most recent main ancestor with at least one S3 report):',
         '',
-        '    : (master)',
+        '    : (main)',
         '    |',
     ]
 
@@ -525,7 +525,7 @@ def regression_info(
     and its test times. Since Python dicts maintain insertion order
     (guaranteed as part of the language spec since 3.7), the
     base_reports argument must list the head's several most recent
-    master commits, from newest to oldest (so the merge-base is
+    main commits, from newest to oldest (so the merge-base is
     list(base_reports)[0]).
     """
     simpler_head = simplify(head_report)
@@ -796,12 +796,12 @@ def assemble_flaky_test_stats(duplicated_tests_by_file: Dict[str, DuplicatedDict
             obj.put(Body=json.dumps(flaky_test), ContentType="application/json")
 
 
-def build_info() -> ReportMetaMeta:
+def build_info(default_branch: str = "origin/master") -> ReportMetaMeta:
     return {
         "build_pr": os.environ.get("PR_NUMBER", os.environ.get("CIRCLE_PR_NUMBER", "")),
         "build_tag": os.environ.get("TAG", os.environ.get("CIRCLE_TAG", "")),
         "build_sha1": os.environ.get("SHA1", os.environ.get("CIRCLE_SHA1", "")),
-        "build_base_commit": get_base_commit(os.environ.get("SHA1", os.environ.get("CIRCLE_SHA1", "HEAD"))),
+        "build_base_commit": get_base_commit(os.environ.get("SHA1", os.environ.get("CIRCLE_SHA1", "HEAD")), default_branch),
         "build_branch": os.environ.get("BRANCH", os.environ.get("CIRCLE_BRANCH", "")),
         "build_job": os.environ.get("JOB_BASE_NAME", os.environ.get("CIRCLE_JOB", "")),
         "build_workflow_id": os.environ.get("WORKFLOW_ID", os.environ.get("CIRCLE_WORKFLOW_ID", "")),
@@ -833,8 +833,8 @@ def build_message(
     }
 
 
-def send_report_to_scribe(reports: Dict[str, TestFile]) -> None:
-    meta_info = build_info()
+def send_report_to_scribe(reports: Dict[str, TestFile], default_branch: str = "origin/master") -> None:
+    meta_info = build_info(default_branch)
     logs = json.dumps(
         [
             {
@@ -855,9 +855,10 @@ def assemble_s3_object(
     reports: Dict[str, TestFile],
     *,
     total_seconds: float,
+    default_branch: str = "origin/master",
 ) -> Version2Report:
     return {
-        **build_info(),  # type: ignore[misc]
+        **build_info(default_branch),  # type: ignore[misc]
         'total_seconds': total_seconds,
         'format_version': 2,
         'files': {
@@ -928,10 +929,10 @@ def upload_failures_to_rds(reports: Dict[str, TestFile]) -> None:
         rds_write("test_failures", failures, only_on_master=False)
 
 
-def print_regressions(head_report: Report, *, num_prev_commits: int) -> None:
+def print_regressions(head_report: Report, *, num_prev_commits: int, default_branch: str = "origin/master") -> None:
     sha1 = os.environ.get("SHA1", os.environ.get("CIRCLE_SHA1", "HEAD"))
 
-    base = get_base_commit(sha1)
+    base = get_base_commit(sha1, default_branch)
 
     count_spec = f"{base}..{sha1}"
     intermediate_commits = int(subprocess.check_output(
@@ -943,7 +944,7 @@ def print_regressions(head_report: Report, *, num_prev_commits: int) -> None:
         encoding="ascii",
     ))
 
-    # if current commit is already on master, we need to exclude it from
+    # if current commit is already on main, we need to exclude it from
     # this history; otherwise we include the merge-base
     commits = subprocess.check_output(
         ["git", "rev-list", f"--max-count={num_prev_commits+1}", base],
@@ -1051,10 +1052,17 @@ if __name__ == '__main__':
         help="compare S3 with JSON file, instead of the test report folder",
     )
     parser.add_argument(
+        "--default_branch",
+        default="master",
+        help="The default branch of the repo that should be used for stats."
+    )
+    parser.add_argument(
         "folder",
         help="test report folder",
     )
     args = parser.parse_args()
+
+    default_branch = f"origin/{args.default_branch}"
 
     reports_by_file, duplicated_tests_by_file = parse_reports(args.folder)
     assemble_flaky_test_stats(duplicated_tests_by_file)
@@ -1065,7 +1073,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     try:
-        send_report_to_scribe(reports_by_file)
+        send_report_to_scribe(reports_by_file, default_branch)
     except Exception as e:
         print(f"ERROR ENCOUNTERED WHEN UPLOADING TO SCRIBE: {e}")
 
@@ -1074,7 +1082,7 @@ if __name__ == '__main__':
         for suite_name, test_suite in test_filename.test_suites.items():
             total_time += test_suite.total_time
 
-    obj = assemble_s3_object(reports_by_file, total_seconds=total_time)
+    obj = assemble_s3_object(reports_by_file, total_seconds=total_time, default_branch=default_branch)
 
     if args.upload_to_s3:
         try:
@@ -1087,6 +1095,6 @@ if __name__ == '__main__':
         if args.use_json:
             head_json = json.loads(Path(args.use_json).read_text())
         try:
-            print_regressions(head_json, num_prev_commits=args.num_prev_commits)
+            print_regressions(head_json, num_prev_commits=args.num_prev_commits, default_branch=default_branch)
         except Exception as e:
             print(f"ERROR ENCOUNTERED WHEN COMPARING AGAINST S3: {e}")

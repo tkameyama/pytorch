@@ -155,8 +155,8 @@ def _query_failure_test_module(reports: List[Tuple["Report", str]]) -> List[str]
     return test_modules
 
 
-def _query_changed_test_files() -> List[str]:
-    cmd = ["git", "diff", "--name-only", "origin/master", "HEAD"]
+def _query_changed_test_files(default_branch: str = "origin/master") -> List[str]:
+    cmd = ["git", "diff", "--name-only", default_branch, "HEAD"]
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     if proc.returncode != 0:
@@ -230,7 +230,7 @@ def get_specified_test_cases(filename: str, tests: List[str]) -> Dict[str, List[
         return specified_test_case_dict
 
 
-def get_reordered_tests(tests: List[str], is_reordering_by_pr: bool) -> List[str]:
+def get_reordered_tests(tests: List[str], is_reordering_by_pr: bool, default_branch: str = "origin/master") -> List[str]:
     """Get the reordered test filename list based on github PR history or git changed file.
     """
     prioritized_tests = []
@@ -247,7 +247,7 @@ def get_reordered_tests(tests: List[str], is_reordering_by_pr: bool) -> List[str
     # Using file changes priority if no stats found from previous PR.
     if len(prioritized_tests) == 0:
         try:
-            changed_files = _query_changed_test_files()
+            changed_files = _query_changed_test_files(default_branch)
         except Exception:
             # If unable to get changed files from git, quit without doing any sorting
             return tests

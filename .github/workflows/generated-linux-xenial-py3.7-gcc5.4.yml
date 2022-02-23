@@ -470,6 +470,7 @@ jobs:
         if: always()
         env:
           AWS_DEFAULT_REGION: us-east-1
+          BASE_REF: ${{ steps.parse-ref.outputs.base_ref }}
           BRANCH: ${{ steps.parse-ref.outputs.branch }}
           JOB_BASE_NAME: linux-xenial-py3.7-gcc5.4-test
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -480,7 +481,7 @@ jobs:
         run: |
           python3 -m pip install -r requirements.txt
           python3 -m pip install boto3==1.19.12
-          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test
+          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test --default_branch $BASE_REF
       - name: Hold runner for 2 hours or until ssh sessions have drained
         # Always hold for active ssh sessions
         if: always()
@@ -717,6 +718,7 @@ jobs:
         if: always()
         env:
           AWS_DEFAULT_REGION: us-east-1
+          BASE_REF: ${{ steps.parse-ref.outputs.base_ref }}
           BRANCH: ${{ steps.parse-ref.outputs.branch }}
           JOB_BASE_NAME: linux-xenial-py3.7-gcc5.4-test
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -727,7 +729,7 @@ jobs:
         run: |
           python3 -m pip install -r requirements.txt
           python3 -m pip install boto3==1.19.12
-          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test
+          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test --default_branch $BASE_REF
       - name: Hold runner for 2 hours or until ssh sessions have drained
         # Always hold for active ssh sessions
         if: always()
@@ -964,6 +966,7 @@ jobs:
         if: always()
         env:
           AWS_DEFAULT_REGION: us-east-1
+          BASE_REF: ${{ steps.parse-ref.outputs.base_ref }}
           BRANCH: ${{ steps.parse-ref.outputs.branch }}
           JOB_BASE_NAME: linux-xenial-py3.7-gcc5.4-test
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -974,7 +977,7 @@ jobs:
         run: |
           python3 -m pip install -r requirements.txt
           python3 -m pip install boto3==1.19.12
-          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test
+          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test --default_branch $BASE_REF
       - name: Hold runner for 2 hours or until ssh sessions have drained
         # Always hold for active ssh sessions
         if: always()
@@ -1211,6 +1214,7 @@ jobs:
         if: always()
         env:
           AWS_DEFAULT_REGION: us-east-1
+          BASE_REF: ${{ steps.parse-ref.outputs.base_ref }}
           BRANCH: ${{ steps.parse-ref.outputs.branch }}
           JOB_BASE_NAME: linux-xenial-py3.7-gcc5.4-test
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -1221,7 +1225,7 @@ jobs:
         run: |
           python3 -m pip install -r requirements.txt
           python3 -m pip install boto3==1.19.12
-          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test
+          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test --default_branch $BASE_REF
       - name: Hold runner for 2 hours or until ssh sessions have drained
         # Always hold for active ssh sessions
         if: always()
@@ -1458,6 +1462,7 @@ jobs:
         if: always()
         env:
           AWS_DEFAULT_REGION: us-east-1
+          BASE_REF: ${{ steps.parse-ref.outputs.base_ref }}
           BRANCH: ${{ steps.parse-ref.outputs.branch }}
           JOB_BASE_NAME: linux-xenial-py3.7-gcc5.4-test
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -1468,7 +1473,7 @@ jobs:
         run: |
           python3 -m pip install -r requirements.txt
           python3 -m pip install boto3==1.19.12
-          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test
+          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test --default_branch $BASE_REF
       - name: Hold runner for 2 hours or until ssh sessions have drained
         # Always hold for active ssh sessions
         if: always()
@@ -1705,6 +1710,7 @@ jobs:
         if: always()
         env:
           AWS_DEFAULT_REGION: us-east-1
+          BASE_REF: ${{ steps.parse-ref.outputs.base_ref }}
           BRANCH: ${{ steps.parse-ref.outputs.branch }}
           JOB_BASE_NAME: linux-xenial-py3.7-gcc5.4-test
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -1715,7 +1721,7 @@ jobs:
         run: |
           python3 -m pip install -r requirements.txt
           python3 -m pip install boto3==1.19.12
-          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test
+          python3 -m tools.stats.print_test_stats --upload-to-s3 --compare-with-s3 test --default_branch $BASE_REF
       - name: Hold runner for 2 hours or until ssh sessions have drained
         # Always hold for active ssh sessions
         if: always()
