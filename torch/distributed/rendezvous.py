@@ -151,6 +151,10 @@ def _create_c10d_store(hostname, port, rank, world_size, timeout) -> Store:
     if not 0 <= port < 2**16:
         raise ValueError(f"port must have value from 0 to 65535 but was {port}.")
 
+    # if world_size is None, then there is a non-fixed number of stores
+    if not world_size:
+        world_size = -1
+
     if _torchelastic_use_agent_store():
         attempt = os.environ["TORCHELASTIC_RESTART_COUNT"]
         tcp_store = TCPStore(hostname, port, world_size, False, timeout)

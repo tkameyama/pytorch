@@ -1,11 +1,14 @@
 from datetime import timedelta
 import logging
+import os
 import threading
 import warnings
 from typing import Generator, Tuple
+from urllib.parse import urlparse
 
 import torch
 import torch.distributed as dist
+from ..rendezvous import _create_c10d_store  # noqa: F401
 
 
 logger = logging.getLogger(__name__)
@@ -162,11 +165,14 @@ if is_available():
         # This rendezvous state sometimes is destroyed before all processes
         # finishing handshaking. To avoid that issue, we make it global to
         # keep it alive.
-        global rendezvous_iterator
-        rendezvous_iterator = dist.rendezvous(
-            rpc_backend_options.init_method, rank=rank, world_size=world_size
-        )
-        store, _, _ = next(rendezvous_iterator)
+        if world_size:
+            global rendezvous_iterator
+            rendezvous_iterator = dist.rendezvous(
+                rpc_backend_options.init_method, rank=rank, world_size=world_size
+            )
+            store, _, _ = next(rendezvous_iterator)
+        else:
+            store = _create_store_for_rpc(rpc_backend_options, rank)
 
         # Use same timeout as RPC.
         store.set_timeout(timedelta(seconds=rpc_backend_options.rpc_timeout))
@@ -195,23 +201,48 @@ if is_available():
             store: dist.Store,
             name: str,
             rank: numbers.Integral,
-            world_size: numbers.Integral,
+            # world_size can be None for a dynamic group
+            world_size: (numbers.Integral, type(None)),
             rpc_backend_options: RpcBackendOptions,
         }
         for arg, arg_type in type_mapping.items():
-            if not isinstance(arg, arg_type):
+            if not isinstance(arg, arg_type):  # type: ignore[arg-type]
                 raise RuntimeError(
                     "Argument {} must be of type {} but got type {}".format(
                         arg, arg_type, type(arg)
                     )
                 )
 
+    def _create_store_for_rpc(backend_options, rank):
+        def _get_env_or_raise(env_var: str) -> str:
+            env_val = os.environ.get(env_var, None)
+            if not env_val:
+                raise ValueError("environment variable %s expected, but not set" % env_var)
+            else:
+                return env_val
+
+        result = urlparse(backend_options.init_method)
+        scheme = result.scheme
+        query = dict(pair.split("=") for pair
+                     in filter(None, result.query.split("&")))  # type: ignore[misc, arg-type, var-annotated]
+        if scheme == "file":
+            ValueError("File initialization is not supported for Dynamic RPC")
+        else:
+            hostname = _get_env_or_raise("MASTER_ADDR")
+            port = int(_get_env_or_raise("MASTER_PORT"))
+        if rank == -1:
+            if "rank" in query:
+                rank = int(query["rank"])
+            else:
+                rank = int(_get_env_or_raise("RANK"))
+        return _create_c10d_store(hostname, port, rank, None, backend_options.rpc_timeout)
+
     def _init_rpc_backend(
         backend=BackendType.TENSORPIPE,  # type: ignore[attr-defined]
         store=None,
         name=None,
         rank=-1,
-        world_size=-1,
+        world_size=None,
         rpc_backend_options=None,
     ):
 
