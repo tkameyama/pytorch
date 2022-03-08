@@ -49,8 +49,6 @@ def process_ir_type(typ: Type) -> Union[BaseCType, VectorCType, OptionalCType, L
             return BaseCType(deviceT)
         elif typ.name == BaseTy.Layout:
             return BaseCType(layoutT)
-        # elif typ.name == BaseTy.Generator:
-            # return BaseCType(generatorT)
         else:
             raise AssertionError(f"TODO add support for type {repr(typ)}")
     elif isinstance(typ, OptionalType):
