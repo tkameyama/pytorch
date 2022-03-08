@@ -354,7 +354,7 @@ struct StackEntry {
   SourceRange range;
 };
 
-C10_EXPORT void format_stack_trace(
+TORCH_API void format_stack_trace(
     std::ostream& out,
     const std::vector<StackEntry>& entries);
 
