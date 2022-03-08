@@ -96,23 +96,24 @@ class LazyIR(ABC):
         # and we use the functional version not out/inplace.
         func = f.functional.func if isinstance(f, NativeFunctionsGroup) else f.func
         schema = LazyIrSchema(func)
-        all_types = schema.filtered_types()
+        all_args = schema.filtered_args()
+        value_args = schema.filtered_args(values=True, scalars=False)
         value_types = schema.filtered_types(values=True, scalars=False)
         scalar_types = schema.filtered_types(values=False, scalars=True)
 
-        node_ctor_args = ", ".join([f"const {i.cpp_type()}& {i.name}" for i in all_types])
+        node_ctor_args = ", ".join([f"const {i.lazy_type.cpp_type()}& {i.name}" for i in all_args])
         scalar_initializers = ",\n        ".join([f"{t.name}({t.name})" for t in scalar_types])
         comma_if_scalar_initializers = ",\n" if len(scalar_initializers) else ""
         scalar_decls = "\n  ".join([f"{t.cpp_type()} {t.name};" for t in scalar_types])
         scalar_hashes = ", ".join([f"{f.name}" for f in scalar_types])
         base_ctor_value_args_list = []
         optional_values = []
-        for t in value_types:
-            if isinstance(t.type, BaseCType):
-                base_ctor_value_args_list.append(f"{t.name}")
-            elif isinstance(t.type, OptionalCType):
-                base_ctor_value_args_list.append(f"{t.name}.value_or(kNullValue)")
-                optional_values.append(t.name)
+        for arg in value_args:
+            if isinstance(arg.lazy_type, BaseCType):
+                base_ctor_value_args_list.append(f"{arg.name}")
+            elif isinstance(arg.lazy_type, OptionalCType):
+                base_ctor_value_args_list.append(f"{arg.name}.value_or(kNullValue)")
+                optional_values.append(arg.name)
             else:
                 raise AssertionError("TODO not sure if there are other valid types to handle here")
         base_ctor_value_args = ", ".join(base_ctor_value_args_list)
