@@ -81,32 +81,6 @@ const at::Tensor& LazyNativeFunctions::as_strided_(
   return self;
 }
 
-at::Tensor LazyNativeFunctions::bernoulli(
-    const at::Tensor& self, c10::optional<at::Generator> generator) {
-  TORCH_LAZY_FN_COUNTER("lazy::");
-  if (generator.has_value() && generator->defined()) {
-    return at::native::call_fallback_fn<&ltc_eager_fallback,
-                                        ATEN_OP(bernoulli)>::call(self,
-                                                                  generator);
-  }
-  auto self_tensor = torch::lazy::TryGetLtcTensor(self);
-  return torch::lazy::CreateAtenFromLtcTensor(
-      lazy_tensor_aten_ops::bernoulli(self_tensor));
-}
-
-at::Tensor& LazyNativeFunctions::bernoulli_(
-    at::Tensor& self, double p, c10::optional<at::Generator> generator) {
-  TORCH_LAZY_FN_COUNTER("lazy::");
-  if (generator.has_value() && generator->defined()) {
-    return at::native::call_fallback_fn<
-        &ltc_eager_fallback, ATEN_OP2(bernoulli_, float)>::call(self, p,
-                                                                generator);
-  }
-  auto self_tensor = torch::lazy::TryGetLtcTensor(self);
-  lazy_tensor_aten_ops::bernoulli_(self_tensor, p);
-  return self;
-}
-
 at::Tensor LazyNativeFunctions::cat(at::TensorList tensors, int64_t dim) {
   TORCH_LAZY_FN_COUNTER("lazy::");
   auto lazy_tensors = torch::lazy::GetLtcTensors(tensors);

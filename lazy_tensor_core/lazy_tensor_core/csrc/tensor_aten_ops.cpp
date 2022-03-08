@@ -17,7 +17,6 @@
 
 #include "c10/util/Optional.h"
 #include <torch/csrc/lazy/core/lazy_graph_executor.h>
-#include "lazy_tensor_core/csrc/ops/bernoulli.h"
 #include "lazy_tensor_core/csrc/ops/index_ops.h"
 #include "lazy_tensor_core/csrc/ops/nms.h"
 #include "lazy_tensor_core/csrc/ops/repeat.h"
@@ -120,38 +119,6 @@ void as_strided_(torch::lazy::LazyTensorPtr& input, std::vector<int64_t> size,
     input->SetSubView(CreateAsStridedViewInfo(
         input_shape, std::move(size), std::move(stride), storage_offset));
   }
-}
-
-torch::lazy::LazyTensorPtr bernoulli(const torch::lazy::LazyTensorPtr& input, double probability) {
-  auto input_shape = input->shape();
-  return torch::lazy::LazyTensor::Create(torch::lazy::MakeNode<ir::ops::Bernoulli>(
-      torch::lazy::LazyGraphExecutor::Get()->GetIrValueForExpandedScalar(probability, input_shape,
-                                                    input->GetDevice()),
-      torch::lazy::LazyGraphExecutor::Get()->GetRngSeed(input->GetDevice()),
-      input_shape.Get()), input->GetDevice());
-}
-
-torch::lazy::LazyTensorPtr bernoulli(const torch::lazy::LazyTensorPtr& input) {
-  return torch::lazy::LazyTensor::Create(torch::lazy::MakeNode<ir::ops::Bernoulli>(
-      input->GetIrValue(),
-      torch::lazy::LazyGraphExecutor::Get()->GetRngSeed(input->GetDevice()),
-      input->shape().Get()), input->GetDevice());
-}
-
-void bernoulli_(torch::lazy::LazyTensorPtr& input, double probability) {
-  auto input_shape = input->shape();
-  input->SetInPlaceIrValue(torch::lazy::MakeNode<ir::ops::Bernoulli>(
-      torch::lazy::LazyGraphExecutor::Get()->GetIrValueForExpandedScalar(probability, input_shape,
-                                                    input->GetDevice()),
-      torch::lazy::LazyGraphExecutor::Get()->GetRngSeed(input->GetDevice()),
-      input_shape.Get()));
-}
-
-void bernoulli_(torch::lazy::LazyTensorPtr& input, const torch::lazy::LazyTensorPtr& probability) {
-  input->SetInPlaceIrValue(torch::lazy::MakeNode<ir::ops::Bernoulli>(
-      probability->GetIrValue(),
-      torch::lazy::LazyGraphExecutor::Get()->GetRngSeed(input->GetDevice()),
-      input->shape().Get()));
 }
 
 torch::lazy::LazyTensorPtr expand(const torch::lazy::LazyTensorPtr& input, std::vector<int64_t> size) {
