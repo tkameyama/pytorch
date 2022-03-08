@@ -16,11 +16,11 @@ class IrUtilNode : public Node {
   ~IrUtilNode() override = default;
 
   void AddOperand(Value v) {
-    if (!v.node) {
+    if (!v.node()) {
       return;
     }
-    operands_as_outputs_.emplace_back(v.node.get(), v.index);
-    operands_.push_back(std::move(v.node));
+    operands_as_outputs_.emplace_back(v.node().get(), v.index);
+    operands_.push_back(std::move(v.node()));
   }
 
   const std::vector<Output>& operands() const override {

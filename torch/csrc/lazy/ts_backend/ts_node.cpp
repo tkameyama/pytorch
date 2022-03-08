@@ -25,7 +25,7 @@ const Shape& GetShapeFromTsOutput(const Output& output) {
 }
 
 const Shape& GetShapeFromTsValue(const Value& value) {
-  if (auto* tsnode = dynamic_cast<const TsNode*>(value.node.get())) {
+  if (auto* tsnode = dynamic_cast<const TsNode*>(value.node().get())) {
     return tsnode->shape(value.index);
   }
   throw std::runtime_error("Expected TsNode but could not dynamic cast");
@@ -73,7 +73,7 @@ TsNode::TsNode(OpKind op, OpList operands, std::vector<Shape>&& shapes,
       continue;
     }
 
-    AddOperand(operand.node, operand.index);
+    AddOperand(operand.node(), operand.index);
   }
 }
 
