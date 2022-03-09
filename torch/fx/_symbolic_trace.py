@@ -11,9 +11,9 @@ from torch._C import ScriptObject  # type: ignore[attr-defined]
 import torch.utils._pytree as pytree
 
 from ._compatibility import compatibility
-from .node import Argument, map_aggregate, base_types
+from .node import _DefaultTensorSentinel, Argument, map_aggregate, base_types
 from .graph import Graph, _PyTreeInfo, _PyTreeCodeGen
-from .graph_module import GraphModule
+from .graph_module import GraphModule, _null_coalesce_fn
 from .proxy import TracerBase, Proxy, ParameterProxy
 
 HAS_VARSTUFF = inspect.CO_VARARGS | inspect.CO_VARKEYWORDS
@@ -868,3 +868,12 @@ def symbolic_trace(root : Union[torch.nn.Module, Callable[..., Any]],
     graph = tracer.trace(root, concrete_args)
     name = root.__class__.__name__ if isinstance(root, torch.nn.Module) else root.__name__
     return GraphModule(tracer.root, graph, name)
+
+@wrap
+def null_coalesce_tensor_sentinel(val, default):
+    if val is _DefaultTensorSentinel:
+        return default
+    else:
+        return val
+
+_null_coalesce_fn.append(null_coalesce_tensor_sentinel)

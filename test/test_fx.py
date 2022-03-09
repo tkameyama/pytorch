@@ -5,6 +5,7 @@ import contextlib
 import copy
 import functools
 import inspect
+import io
 import math
 import numbers
 import operator
@@ -1236,6 +1237,72 @@ class TestFX(JitTestCase):
         traced_out = traced(x, y)
         self.assertEqual(traced_out.left, ref_out.left)
         self.assertEqual(traced_out.right, ref_out.right)
+
+    def test_default_tensor_val(self):
+        default_param = torch.randn(5, 3)
+
+        class M(torch.nn.Module):
+            def forward(self, x, extra=default_param):
+                out = torch.cat([x, extra])
+                return out
+
+        m = M()
+
+        traced = torch.fx.symbolic_trace(m)
+
+        x = torch.randn(5, 3)
+        torch.testing.assert_allclose(traced(x), torch.cat([x, default_param]))
+        torch.testing.assert_allclose(traced(x, x), torch.cat([x, x]))
+
+        retraced = torch.fx.symbolic_trace(traced)
+        torch.testing.assert_allclose(retraced(x), torch.cat([x, default_param]))
+        torch.testing.assert_allclose(retraced(x, x), torch.cat([x, x]))
+
+        bio = io.BytesIO()
+
+        torch.save(retraced, bio)
+
+        bio.seek(0)
+
+        loaded = torch.load(bio)
+
+        torch.testing.assert_allclose(loaded(x), torch.cat([x, default_param]))
+        torch.testing.assert_allclose(loaded(x, x), torch.cat([x, x]))
+
+    def test_default_tensor_val_manual_graph(self):
+        default_param = torch.randn(5, 3)
+
+        class M(torch.nn.Module):
+            def forward(self, x, extra=default_param):
+                out = torch.cat([x, extra])
+                return out
+
+        g = torch.fx.Graph()
+        x = g.placeholder('x')
+        extra = g.placeholder('extra', default_value=default_param)
+        out = g.call_function(torch.cat, ([x, extra],))
+        g.output(out)
+
+        traced = torch.fx.GraphModule(torch.nn.Module(), g)
+
+        x = torch.randn(5, 3)
+        torch.testing.assert_allclose(traced(x), torch.cat([x, default_param]))
+        torch.testing.assert_allclose(traced(x, x), torch.cat([x, x]))
+
+        retraced = torch.fx.symbolic_trace(traced)
+        torch.testing.assert_allclose(retraced(x), torch.cat([x, default_param]))
+        torch.testing.assert_allclose(retraced(x, x), torch.cat([x, x]))
+
+        bio = io.BytesIO()
+
+        torch.save(retraced, bio)
+
+        bio.seek(0)
+
+        loaded = torch.load(bio)
+
+        torch.testing.assert_allclose(loaded(x), torch.cat([x, default_param]))
+        torch.testing.assert_allclose(loaded(x, x), torch.cat([x, x]))
 
     def test_custom_proxy_input_dependent_control_flow(self):
         class ZeroTensor(metaclass=torch.fx.ProxyableClassMeta):

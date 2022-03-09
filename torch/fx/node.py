@@ -11,7 +11,19 @@ from torch.fx.operator_schemas import normalize_function, normalize_module, Args
 if TYPE_CHECKING:
     from .graph import Graph
 
-BaseArgumentTypes = Union[str, int, float, bool, torch.dtype, torch.Tensor, torch.device, torch.memory_format, torch.layout]
+# Sentinel for a default tensor value on function arguments. Since tensor
+# values are interned as attributes on the module, references to that attribute
+# cannot be referenced from the default value slot on the function signature.
+# Use this sentinel value instead and emit a statement in the function body
+# to multiplex either the default value or the actual passed-in value
+class _TensorSentinel:
+    def __repr__(self):
+        return _TensorSentinel.__module__ + '._DefaultTensorSentinel'
+
+_DefaultTensorSentinel = _TensorSentinel()
+
+BaseArgumentTypes = Union[str, int, float, bool, torch.dtype, torch.Tensor, torch.device, torch.memory_format, torch.layout,
+                          _TensorSentinel]
 base_types = BaseArgumentTypes.__args__  # type: ignore[attr-defined]
 
 Target = Union[Callable[..., Any], str]
