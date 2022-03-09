@@ -13,16 +13,14 @@ AllToAll::AllToAll(const torch::lazy::Value& input,
                    int64_t concat_dimension, int64_t split_count,
                    std::vector<std::vector<int64_t>> groups)
     : torch::lazy::TsNode(torch::lazy::ltc_all_to_all, {input, token},
+                          {compiler::InferShape(this)},
                           /*num_outputs=*/2,
                           torch::lazy::MHash(split_dimension, concat_dimension,
                                              split_count, groups)),
       split_dimension_(split_dimension),
       concat_dimension_(concat_dimension),
       split_count_(split_count),
-      groups_(std::move(groups)) {
-  SetShapeDeferred(
-      [&]() { return compiler::InferShape(this); });
-}
+      groups_(std::move(groups)) {}
 
 std::string AllToAll::ToString() const {
   std::stringstream ss;

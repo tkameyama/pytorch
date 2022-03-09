@@ -12,12 +12,10 @@ CollectivePermute::CollectivePermute(
     const torch::lazy::Value& input, const torch::lazy::Value& token,
     std::vector<std::pair<int64_t, int64_t>> source_target_pairs)
     : torch::lazy::TsNode(torch::lazy::ltc_collective_permute, {input, token},
+                          {compiler::InferShape(this)},
                           /*num_outputs=*/2,
                           torch::lazy::MHash(source_target_pairs)),
-      source_target_pairs_(std::move(source_target_pairs)) {
-  SetShapeDeferred(
-      [&]() { return compiler::InferShape(this); });
-}
+      source_target_pairs_(std::move(source_target_pairs)) {}
 
 std::string CollectivePermute::ToString() const {
   std::stringstream ss;

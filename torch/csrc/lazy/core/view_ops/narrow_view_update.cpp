@@ -12,11 +12,10 @@ NarrowViewUpdate::NarrowViewUpdate(
     : TsNode(
           ltc_narrow_view_update,
           {input, source},
+          {input.shape()},
           /*num_outputs=*/1,
           MHash(base_indices)),
-      base_indices_(base_indices.begin(), base_indices.end()) {
-  SetShapeDeferred([&]() { return operand(0).shape(); });
-}
+      base_indices_(base_indices.begin(), base_indices.end()) {}
 
 std::string NarrowViewUpdate::ToString() const {
   std::stringstream ss;

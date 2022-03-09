@@ -13,7 +13,8 @@ namespace lazy {
 class CacheNode : public Node {
  public:
   explicit CacheNode(const std::string& str)
-      : Node(OpKind(), /* num_outputs */ 1, /* hash_func */ [&](bool /*bakeInSizes*/) -> hash_t { return Hash(str); }),
+      : Node(OpKind(), /* shapes */{Shape()},
+             /* num_outputs */ 1, /* hash_func */ [&](bool /*bakeInSizes*/) -> hash_t { return Hash(str); }),
         str_(str) {}
   ~CacheNode() override = default;
 
@@ -24,8 +25,6 @@ class CacheNode : public Node {
   const Output& operand(size_t i) const override {
     TORCH_INTERNAL_ASSERT(false, "Can't access operand[i] of test node");
   }
-  const Shape& shape(size_t i) const override { return Shape(); }
-  c10::ArrayRef<Shape> shapes() const override { return {}; }
  private:
   std::string str_;
 };

@@ -31,8 +31,6 @@ class TORCH_API TsNode : public lazy::Node {
   TsNode(OpKind op, OpList operands, size_t num_outputs = 1,
          hash_t hash_seed = kHashSeed);
 
-  void SetShapeDeferred(const std::function<Shape()>& shape_fn);
-
   // Contructor used to create leaf nodes.
   TsNode(OpKind op, Shape shape, size_t num_outputs = 1,
          hash_t hash_seed = kHashSeed);
@@ -41,12 +39,6 @@ class TORCH_API TsNode : public lazy::Node {
 
   Shape GetOpShape(
       const std::function<Shape()>& shape_fn) const;
-
-  // Retrieves the full shape of the IR Node.
-  c10::ArrayRef<Shape> shapes() const override { return shapes_; }
-
-  // Retrieves the shape of the output at a given index.
-  const Shape& shape(size_t output_index = 0) const override;
 
   std::string ToString() const override;
 
@@ -73,7 +65,6 @@ class TORCH_API TsNode : public lazy::Node {
   // Adds node's index output number as operand.
   void AddOperand(NodePtr node, size_t index = 0);
 
-  std::vector<Shape> shapes_;
   // A node holds a real reference to its operands.
   std::vector<NodePtr> operands_;
   // Outputs do not hold references on the nodes, and neither do the uses, since

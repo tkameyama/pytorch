@@ -17,16 +17,12 @@ Unsqueeze::Unsqueeze(const torch::lazy::Value& input, int dim)
     : torch::lazy::TsNode(
           torch::lazy::OpKind(at::aten::unsqueeze),
           {input},
+          {torch::lazy::Shape(
+        input.shape().scalar_type(),
+        BuildUnsqueezedDimensions(input.shape().sizes(), dim))},
           /*num_outputs=*/1,
           torch::lazy::MHash(dim)),
-      dim_(dim) {
-  SetShapeDeferred([&]() {
-    const auto& input_shape = input.shape();
-    return torch::lazy::Shape(
-        input_shape.scalar_type(),
-        BuildUnsqueezedDimensions(input_shape.sizes(), dim));
-  });
-}
+      dim_(dim) {}
 
 std::string Unsqueeze::ToString() const {
   std::stringstream ss;

@@ -10,13 +10,11 @@ Expand::Expand(
     : TsNode(
           OpKind(at::aten::expand),
           {input},
+          {Shape(input.shape().scalar_type(), size)},
           /*num_outputs=*/1,
           MHash(size, is_scalar_expand)),
       size_(std::move(size)),
-      is_scalar_expand_(is_scalar_expand) {
-  SetShapeDeferred(
-      [&]() { return Shape(input.shape().scalar_type(), size_); });
-}
+      is_scalar_expand_(is_scalar_expand) {}
 
 std::string Expand::ToString() const {
   std::stringstream ss;

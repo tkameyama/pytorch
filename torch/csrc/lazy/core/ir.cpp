@@ -46,20 +46,23 @@ bool Node::enableDynamicShape() {
   return enabled || FLAGS_ltc_enable_dynamic_shapes;
 }
 
-Node::Node(OpKind op, size_t num_outputs, hash_t node_hash, std::function<hash_t(bool)> dag_hash_fn)
+Node::Node(OpKind op, c10::ArrayRef<Shape> shapes,
+           size_t num_outputs, hash_t node_hash, std::function<hash_t(bool)> dag_hash_fn)
     : op_(op),
       num_outputs_(num_outputs),
       node_hash_(node_hash),
       dag_hash_without_sizes_(dag_hash_fn(false)),
       dag_hash_with_sizes_(dag_hash_fn(true)),
+      shapes_(shapes.begin(), shapes.end()),
       metadata_(GetMetaDataIfDebugging()) {}
 
-Node::Node(OpKind op, size_t num_outputs, std::function<hash_t(bool)> node_hash_fn)
+Node::Node(OpKind op, c10::ArrayRef<Shape> shapes, size_t num_outputs, std::function<hash_t(bool)> node_hash_fn)
     : op_(op),
       num_outputs_(num_outputs),
       node_hash_(node_hash_fn(!enableDynamicShape())),
       dag_hash_without_sizes_(node_hash_fn(false)),
       dag_hash_with_sizes_(node_hash_fn(true)),
+      shapes_(shapes.begin(), shapes.end()),
       metadata_(GetMetaDataIfDebugging()) {}
 
 Node::~Node() = default;
@@ -75,6 +78,10 @@ std::string Node::ToString() const {
   }
   EmitShortFrameInfo(ss, metadata_.frame_info);
   return ss.str();
+}
+
+const Shape& Node::shape(size_t output_index) const {
+  return shapes_.at(output_index);
 }
 
 } // namespace lazy

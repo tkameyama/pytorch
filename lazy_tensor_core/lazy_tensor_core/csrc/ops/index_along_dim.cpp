@@ -11,11 +11,8 @@ IndexAlongDim::IndexAlongDim(torch::lazy::OpKind op,
                              const torch::lazy::Value& index,
                              const torch::lazy::Value& value, int64_t dim)
     : torch::lazy::TsNode(op, {buffer, index, value},
-                          /*num_outputs=*/1, torch::lazy::MHash(dim)),
-      dim_(dim) {
-  SetShapeDeferred(
-      [&]() { return compiler::InferShape(this); });
-}
+                          {compiler::InferShape(this)}, /*num_outputs=*/1, torch::lazy::MHash(dim)),
+      dim_(dim) {}
 
 std::string IndexAlongDim::ToString() const {
   std::stringstream ss;

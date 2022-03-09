@@ -21,15 +21,11 @@ std::vector<int64_t> BuildSqueezedDimensions(c10::ArrayRef<int64_t> dimensions,
 
 Squeeze::Squeeze(const torch::lazy::Value& input, int dim)
     : torch::lazy::TsNode(torch::lazy::OpKind(at::aten::squeeze), {input},
-                          /*num_outputs=*/1, torch::lazy::MHash(dim)),
-      dim_(dim) {
-  SetShapeDeferred(
-      [&]() {
-        const auto& input_shape = input.shape();
-        return torch::lazy::Shape(input_shape.scalar_type(),
-          BuildSqueezedDimensions(input_shape.sizes(), dim));
-      });
-}
+                          {torch::lazy::Shape(input.shape().scalar_type(),
+                                              BuildSqueezedDimensions(input.shape().sizes(), dim))},
+                          /*num_outputs=*/1,
+                          torch::lazy::MHash(dim)),
+      dim_(dim) {}
 
 std::string Squeeze::ToString() const {
   std::stringstream ss;

@@ -27,11 +27,7 @@ const Shape& GetShapeFromTsValue(const Value& value) {
 
 void TsNodeSetShapeDeferred(
     NodePtr node, const std::function<Shape()>& shape_fn) {
-  if (auto tsnode = std::dynamic_pointer_cast<TsNode>(node)) {
-    tsnode->SetShapeDeferred(shape_fn);
-    return;
-  }
-  throw std::runtime_error("Expected TsNode but could not dynamic cast");
+  throw std::runtime_error("SetShapeDeferred is not supported. IRs calling this aren't used anyway");
 }
 
 hash_t OperandHashes(const OpList& operands, const hash_t& seed, bool bakeInSizes) {
@@ -49,14 +45,13 @@ hash_t OperandHashes(const OpList& operands, const hash_t& seed, bool bakeInSize
 
 TsNode::TsNode(OpKind op, OpList operands, std::vector<Shape>&& shapes,
                size_t num_outputs, hash_t hash_seed)
-    : Node(op, num_outputs,
+    : Node(op, std::move(shapes), num_outputs,
            // TODO(WHC) this is inefficient (having to compute node_hash twice
            // since I can't call hash() yet) so probably move dag_hash
            // initialization to a separate function?
            /* node_hash */ HashCombine(op.hash(), hash_seed),
            /* dag_hash */
            [&](bool bakeInSizes) { return OperandHashes(operands, HashCombine(op.hash(), hash_seed), bakeInSizes); }),
-      shapes_(shapes),
       python_stacktrace_(GetFirstUserFrameInPythonIfEnabled()) {
   for (auto& operand : operands) {
     // Ideally, optional operands should be filtered by the leaf node classes,
@@ -74,29 +69,17 @@ TsNode::TsNode(OpKind op, OpList operands, std::vector<Shape>&& shapes,
 TsNode::TsNode(OpKind op, OpList operands,
                const std::function<Shape()>& shape_fn,
                size_t num_outputs, hash_t hash_seed)
-    : TsNode(op, operands, std::vector<Shape>{}, num_outputs, hash_seed) {
-  shapes_.push_back(GetOpShape(shape_fn));
+    : TsNode(op, operands, {GetOpShape(shape_fn)}, num_outputs, hash_seed) {
 }
 
 TsNode::TsNode(OpKind op, OpList operands, size_t num_outputs,
                hash_t hash_seed)
     : TsNode(op, operands, std::vector<Shape>{}, num_outputs, hash_seed) {}
 
-void TsNode::SetShapeDeferred(
-    const std::function<Shape()>& shape_fn) {
-  shapes_.push_back(GetOpShape(shape_fn));
-}
 
 TsNode::TsNode(OpKind op, Shape shape, size_t num_outputs, hash_t hash_seed)
-    : Node(op, num_outputs, [&](bool bakeInSizes) -> hash_t { return GetOpHash(op, shape, hash_seed, bakeInSizes); }),
-    python_stacktrace_(GetFirstUserFrameInPythonIfEnabled())
-{
-  shapes_.push_back(std::move(shape));
-}
-
-const Shape& TsNode::shape(size_t output_index) const {
-  return shapes_.at(output_index);
-}
+    : Node(op, {shape}, num_outputs, [&](bool bakeInSizes) -> hash_t { return GetOpHash(op, shape, hash_seed, bakeInSizes); }),
+    python_stacktrace_(GetFirstUserFrameInPythonIfEnabled()) {}
 
 using ShapeCache = Cache<hash_t, Shape, HashReducer>;
 

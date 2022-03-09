@@ -9,11 +9,8 @@ namespace ops {
 IndexGet::IndexGet(const torch::lazy::Value& base,
                    const torch::lazy::Value& indices, int64_t start_dim)
     : torch::lazy::TsNode(torch::lazy::OpKind(at::aten::index), {base, indices},
-                          /*num_outputs=*/1, torch::lazy::MHash(start_dim)),
-      start_dim_(start_dim) {
-  SetShapeDeferred(
-      [&]() { return compiler::InferShape(this); });
-}
+                          {compiler::InferShape(this)}, /*num_outputs=*/1, torch::lazy::MHash(start_dim)),
+      start_dim_(start_dim) {}
 
 std::string IndexGet::ToString() const {
   std::stringstream ss;

@@ -9,13 +9,10 @@ Permute::Permute(const Value& input, std::vector<int64_t> dims)
     : TsNode(
           OpKind(at::aten::permute),
           {input},
+          {MakePermuteShape(input.shape(), dims)},
           /*num_outputs=*/1,
           MHash(dims)),
-      dims_(std::move(dims)) {
-  SetShapeDeferred([&]() {
-    return MakePermuteShape(operand(0).shape(), dims_);
-  });
-}
+      dims_(std::move(dims)) {}
 
 std::string Permute::ToString() const {
   std::stringstream ss;

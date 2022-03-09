@@ -24,15 +24,13 @@ AllReduce::AllReduce(AllReduceType reduce_type, torch::lazy::OpList operands,
                      std::vector<std::vector<int64_t>> groups)
     : torch::lazy::TsNode(
           torch::lazy::ltc_cross_replica_sum, GetOperandList(operands, token),
+          {compiler::InferShape(this)},
           /*num_outputs=*/operands.size() + 1,
           torch::lazy::MHash(torch::lazy::GetEnumValue(reduce_type), scale,
                              groups)),
       reduce_type_(reduce_type),
       scale_(scale),
-      groups_(std::move(groups)) {
-  SetShapeDeferred(
-      [&]() { return compiler::InferShape(this); });
-}
+      groups_(std::move(groups)) {}
 
 std::string AllReduce::ToString() const {
   std::stringstream ss;

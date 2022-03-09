@@ -12,14 +12,11 @@ Narrow::Narrow(
     : TsNode(
           OpKind(at::aten::narrow),
           {input},
+          {Shape(input.shape().scalar_type(), sizes)},
           /*num_outputs=*/1,
           MHash(base_indices, sizes)),
       base_indices_(base_indices.begin(), base_indices.end()),
-      sizes_(sizes.begin(), sizes.end()) {
-  SetShapeDeferred([&]() {
-    return Shape(operand(0).shape().scalar_type(), sizes);
-  });
-}
+      sizes_(sizes.begin(), sizes.end()) {}
 
 std::string Narrow::ToString() const {
   std::stringstream ss;

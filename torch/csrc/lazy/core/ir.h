@@ -83,10 +83,11 @@ class TORCH_API Node {
   //
   // None leaf node's node_hash does not contains shape information always.
   // So we pass in the hash value rather than a function.
-  Node(OpKind op, size_t num_outputs, hash_t node_hash, std::function<hash_t(bool)> dag_hash_fn);
+  Node(OpKind op, c10::ArrayRef<Shape> shapes,
+       size_t num_outputs, hash_t node_hash, std::function<hash_t(bool)> dag_hash_fn);
 
   // Contructor used to create leaf nodes.
-  Node(OpKind op, size_t num_outputs, std::function<hash_t(bool)> node_hash_fn);
+  Node(OpKind op, c10::ArrayRef<Shape> shapes, size_t num_outputs, std::function<hash_t(bool)> node_hash_fn);
 
   virtual ~Node();
 
@@ -98,9 +99,14 @@ class TORCH_API Node {
     return num_outputs_;
   }
 
-  virtual c10::ArrayRef<Shape> shapes() const = 0;
+  // Shapes are computed by meta kernels and represent the static shape for the current graph,
+  // or in the case of dynamic ops, the 'upper bound' shape based on inferring the maximal output
+  // shape given the input shapes
+  // Retrieves a vector of shapes each representing the shape of one output tensor for this op
+  c10::ArrayRef<Shape> shapes() const { return shapes_; }
 
-  virtual const Shape& shape(size_t output_index = 0) const = 0;
+  // Retrieves the shape of the output at a given index.
+  const Shape& shape(size_t output_index = 0) const;
 
   virtual const std::vector<Output>& operands() const = 0;
 
@@ -156,6 +162,9 @@ class TORCH_API Node {
   // different hashes.
   hash_t dag_hash_without_sizes_;
   hash_t dag_hash_with_sizes_;
+
+  std::vector<Shape> shapes_;
+
   // The IR specific metadata attached to the IR node.
   MetaData metadata_;
   // The IR framework user can attach a user defined metadata object deriving
