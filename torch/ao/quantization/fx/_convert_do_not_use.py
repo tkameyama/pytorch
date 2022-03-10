@@ -307,8 +307,10 @@ def convert_weighted_module(
         node: Node,
         modules: Dict[str, torch.nn.Module],
         observed_node_names: Set[str],
-        quantized_reference_module_mapping: Dict[Callable, Any]):
-    """ Convert a weighted module to reference quantized module in the model
+        quantized_reference_module_mapping: Dict[Callable, Any],
+        qconfig_map: Dict[str, QConfigAny]):
+    """ Convert a weighted module to reference quantized module in the model.
+    If the QConfig of a QAT module is not set, the module will still be converted to a float module.
 
     Args:
       - node: The call_module node of the observed standalone module
@@ -320,32 +322,7 @@ def convert_weighted_module(
     """
     original_module = modules[str(node.target)]
     qconfig = original_module.qconfig
-
     is_observed = node.name in observed_node_names
-    if qconfig is None or \
-       not is_observed:
-        return
-
-    # TODO: rename weight_is_statically_quantized to weight_is_int8_quantized
-    is_weight_quantized = weight_is_quantized(qconfig)
-    quant_type = get_quant_type(qconfig)
-
-    # skip reference module swapping for embedding when quantization mode does not
-    # match
-    # TODO: we need a more systematic way to handle this after we migrate to use
-    # backend_config_dict everywhere
-    if isinstance(original_module, WEIGHT_ONLY_MODULE_CLASSES) and \
-       quant_type != QuantType.WEIGHT_ONLY:
-        return
-
-    if isinstance(original_module, DYNAMIC_MODULE_CLASSES) and \
-       quant_type != QuantType.DYNAMIC:
-        return
-
-    # the condition for swapping the module to reference quantized module is:
-    # weights need to be quantized
-    if not is_weight_quantized:
-        return
 
     float_module = original_module
     fused_module = None
@@ -407,6 +384,31 @@ def convert_weighted_module(
         # Issue: https://github.com/pytorch/pytorch/issues/73941
         weight_post_process(float_module.weight)  # type: ignore[operator]
         wq_or_wq_dict = get_qparam_dict(weight_post_process)
+
+    # If a qconfig is not defined for this node, then skip converting to a reference module
+    if qconfig is None or has_none_qconfig(node, qconfig_map) or not is_observed:
+        return
+
+    # TODO: rename weight_is_statically_quantized to weight_is_int8_quantized
+    is_weight_quantized = weight_is_quantized(qconfig)
+    quant_type = get_quant_type(qconfig)
+
+    # skip reference module swapping for embedding when quantization mode does not
+    # match
+    # TODO: we need a more systematic way to handle this after we migrate to use
+    # backend_config_dict everywhere
+    if isinstance(original_module, WEIGHT_ONLY_MODULE_CLASSES) and \
+       quant_type != QuantType.WEIGHT_ONLY:
+        return
+
+    if isinstance(original_module, DYNAMIC_MODULE_CLASSES) and \
+       quant_type != QuantType.DYNAMIC:
+        return
+
+    # the condition for swapping the module to reference quantized module is:
+    # weights need to be quantized
+    if not is_weight_quantized:
+        return
 
     # We use the same reference module for all modes of quantization: static, dynamic, weight_only
     ref_qmodule_cls = quantized_reference_module_mapping.get(type(float_module), None)
@@ -474,6 +476,9 @@ def convert_custom_module(
         quantized_custom_module_class.from_observed(observed_custom_module)
     parent_name, name = _parent_name(node.target)
     setattr(modules[parent_name], name, quantized_custom_module)
+
+def has_none_qconfig(node: Node, qconfig_map: Dict[str, QConfigAny]) -> bool:
+    return node.name in qconfig_map and qconfig_map[node.name] is None
 
 def _convert_do_not_use(
         model: GraphModule, is_reference: bool = False,
@@ -582,7 +587,9 @@ def _convert_do_not_use(
         module_path, prefix = get_module_path_and_prefix(node, node_name_to_scope, qconfig_map)
         observer_module = modules[node.target]
         maybe_quantize_node_info = get_quantize_node_info(observer_module)
-        if maybe_quantize_node_info is None:
+        # Skip replacing if the qconfigs of all consumers and producers of this observer are None
+        skip_replace = all([has_none_qconfig(n, qconfig_map) for n in list(node.args) + list(node.users.keys())])
+        if skip_replace or maybe_quantize_node_info is None:
             # didn't find correponding quantize op and info for the observer_module
             # so we just remove the observer
             with graph.inserting_before(node):
@@ -676,7 +683,7 @@ def _convert_do_not_use(
             elif type(modules[node.target]) in set(
                     weighted_module_classes).union(QAT_MODULE_CLASSES).union(FUSED_MODULE_CLASSES):
                 convert_weighted_module(
-                    node, modules, observed_node_names, quantized_reference_module_mapping)
+                    node, modules, observed_node_names, quantized_reference_module_mapping, qconfig_map)
             elif type(modules[node.target]) in custom_module_classes:
                 convert_custom_module(
                     node, model.graph, modules, custom_module_class_mapping,

@@ -3544,11 +3544,11 @@ class TestQuantizeFx(QuantizationTestCase):
                                         ]}
 
                 node_occurrence = {
-                    ns.call_function(torch.quantize_per_tensor): 2,
+                    ns.call_function(torch.quantize_per_tensor): 1,
                     ns.call_function(torch.ops.quantized.linear): 2,
                     ns.call_function(torch.ops.quantized.add): 1,
                     ns.call_function(torch.mul): 1,
-                    ns.call_method("dequantize"): 2
+                    ns.call_method("dequantize"): 1
                 }
                 order_check = [
                     ns.call_function(torch.quantize_per_tensor),
@@ -3557,8 +3557,6 @@ class TestQuantizeFx(QuantizationTestCase):
                     ns.call_function(torch.ops.quantized.add),
                     ns.call_method("dequantize"),
                     ns.call_function(torch.mul),
-                    ns.call_function(torch.quantize_per_tensor),
-                    ns.call_method("dequantize"),
                     ns.call_module(nn.Linear),
                 ]
 
