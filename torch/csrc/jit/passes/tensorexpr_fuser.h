@@ -60,6 +60,13 @@ TORCH_API Value* broadcastSizes(at::ArrayRef<Value*> sizes, AliasDb* db);
 
 namespace tensorexpr {
 TORCH_API bool isSupported(Node* node);
+
+// These functions are used in test_profiler.py to make sure
+// that tensor type specializations are available in the
+// CustomPasses.
+TORCH_API void addTensorTypeSpecializationDetectionPass();
+TORCH_API void removeTensorTypeSpecializationDetectionPass();
+TORCH_API bool passDetectedSpecializedTensors();
 } // namespace tensorexpr
 } // namespace jit
 } // namespace torch
